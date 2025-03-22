@@ -5,10 +5,6 @@
 
 **Color**ful **bio**nic **read**ing **exper**ience **wi**th **Zot**ero. **High**light **verb**s **an**d **nou**ns **i**n **differ**ent **colo**rs.
 
-<div align=center><img src="./docs/res/teaser.png" width="800px"></img></div>
-
-### 学术论文阅读效果
-
 <div align=center><img src="./temp_images/teaser.png" width="800px"></img></div>
 
 ## 🧩 Outline
