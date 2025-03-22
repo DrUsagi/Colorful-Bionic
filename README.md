@@ -7,6 +7,10 @@
 
 <div align=center><img src="./docs/res/teaser.png" width="800px"></img></div>
 
+### 学术论文阅读效果
+
+<div align=center><img src="./temp_images/teaser.png" width="800px"></img></div>
+
 ## 🧩 Outline
 
 [🧐 What is this?](#-what-is-this)
