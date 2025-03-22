@@ -1,6 +1,6 @@
 {
   "name": "bionic-for-zotero",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Colorful bionic reading experience with Zotero.",
   "config": {
     "addonName": "Colorful Bionic",
