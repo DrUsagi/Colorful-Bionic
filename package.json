@@ -1,9 +1,9 @@
 {
   "name": "bionic-for-zotero",
   "version": "0.1.1",
-  "description": "Bionic reading experience with Zotero.",
+  "description": "Colorful bionic reading experience with Zotero.",
   "config": {
-    "addonName": "Bionic for Zotero",
+    "addonName": "Colorful Bionic",
     "addonID": "bionicReader@euclpts.com",
     "addonRef": "bionicReader",
     "addonInstance": "BionicReader",
@@ -11,13 +11,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/windingwind/bionic-for-zotero.git"
+    "url": "git+https://github.com/DrUsagi/Colorful-Bionic.git"
   },
-  "author": "windingwind",
+  "author": "DrUsagi",
   "bugs": {
-    "url": "https://github.com/windingwind/bionic-for-zotero/issues"
+    "url": "https://github.com/DrUsagi/Colorful-Bionic/issues"
   },
-  "homepage": "https://github.com/windingwind/bionic-for-zotero#readme",
+  "homepage": "https://github.com/DrUsagi/Colorful-Bionic#readme",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "start": "zotero-plugin serve",
@@ -28,6 +28,10 @@
     "update-deps": "npm update --save"
   },
   "dependencies": {
+    "compromise": "^14.14.4",
+    "wink-eng-lite-web-model": "^1.8.1",
+    "wink-nlp": "^2.3.2",
+    "wink-pos-tagger": "^2.2.2",
     "zotero-plugin-toolkit": "^4.0.11"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-globals */
 import { wait } from "zotero-plugin-toolkit";
 import { computeFont } from "../utils/font";
+import { isVerb, isNoun } from "../utils/nlp";
 
 import type {
   PDFPage,
@@ -12,6 +13,9 @@ import type {
 declare const PDFViewerApplication: _ZoteroTypes.Reader.PDFViewerApplication;
 
 declare const pdfjsLib: _ZoteroTypes.Reader.pdfjs;
+
+// 定义句子结束标记（句号，问号，感叹号等）
+const SENTENCE_END_CHARS = ['.', '?', '!', '。', '？', '！'];
 
 let intentStatesPrototype: any;
 
@@ -94,19 +98,25 @@ function patchCanvasGraphicsShowText(
   // @ts-ignore Runtime generated method on prototype
   const original_showText = canvasGraphicsPrototype[pdfjsLib.OPS.showText];
   _log("Patching showText", canvasGraphicsPrototype);
+
   // @ts-ignore Runtime generated method on prototype
   canvasGraphicsPrototype[pdfjsLib.OPS.showText] = function (glyphs: Glyph[]) {
-    if (!window.__BIONIC_READER_ENABLED) {
+    // 判断是否需要应用样式
+    const needsProcessing = window.__BIONIC_READER_ENABLED ||
+      window.__BIONIC_HIGHLIGHT_VERBS ||
+      window.__BIONIC_HIGHLIGHT_NOUNS;
+
+    if (!needsProcessing) {
       return original_showText.apply(this, [glyphs]);
     }
 
     const opacityContrast = window.__BIONIC_OPACITY_CONTRAST || 1;
-
     const weightContrast = window.__BIONIC_WEIGHT_CONTRAST || 1;
     const weightOffset = window.__BIONIC_WEIGHT_OFFSET || 0;
 
     const savedFont = this.ctx.font;
     const savedOpacity = this.ctx.globalAlpha;
+    const savedFillStyle = this.ctx.fillStyle;
 
     const { bold, light } = computeFont({
       font: savedFont,
@@ -118,21 +128,47 @@ function patchCanvasGraphicsShowText(
 
     const newGlyphData = computeBionicGlyphs(glyphs);
 
-    for (const { glyphs: newG, isBold } of newGlyphData) {
-      this.ctx.font = isBold ? bold.font : light.font;
-      // If use greater contrast is enabled, set text opacity to less than 1
-      if (opacityContrast > 1 && !isBold) {
-        this.ctx.globalAlpha = light.alpha;
+    for (const { glyphs: newG, isBold, isHighlightedVerb, isHighlightedNoun } of newGlyphData) {
+      // 词性高亮处理 - 添加互斥逻辑，确保一个词只有一种颜色
+      // 避免一个词同时被多种颜色标注
+      if (window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb && window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun) {
+        // 当同时满足动词和名词条件时，选择一种颜色（这里以动词为优先）
+        this.ctx.save();
+        this.ctx.fillStyle = window.__BIONIC_VERB_HIGHLIGHT_COLOR || "#FF5252";
+        _log("词同时是动词和名词，优先显示为动词");
+      } else if (window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb) {
+        this.ctx.save();
+        this.ctx.fillStyle = window.__BIONIC_VERB_HIGHLIGHT_COLOR || "#FF5252";
+      } else if (window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun) {
+        this.ctx.save();
+        this.ctx.fillStyle = window.__BIONIC_NOUN_HIGHLIGHT_COLOR || "#5252FF";
       }
+
+      // 处理bionic加粗
+      if (window.__BIONIC_READER_ENABLED) {
+        this.ctx.font = isBold ? bold.font : light.font;
+        // If use greater contrast is enabled, set text opacity to less than 1
+        if (opacityContrast > 1 && !isBold) {
+          this.ctx.globalAlpha = light.alpha;
+        }
+      }
+
       original_showText.apply(this, [newG]);
+
+      if ((window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb) ||
+        (window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun)) {
+        this.ctx.restore();
+      }
+
       this.ctx.font = savedFont;
       this.ctx.globalAlpha = savedOpacity;
+      this.ctx.fillStyle = savedFillStyle;
     }
 
     return undefined;
   };
   _log("Patched showText", window.__BIONIC_READER_ENABLED);
-  if (window.__BIONIC_READER_ENABLED) {
+  if (window.__BIONIC_READER_ENABLED || window.__BIONIC_HIGHLIGHT_VERBS || window.__BIONIC_HIGHLIGHT_NOUNS) {
     refresh();
   }
 }
@@ -144,6 +180,8 @@ function computeBionicGlyphs(glyphs: Glyph[]) {
   const newGlyphData: {
     glyphs: Glyph[];
     isBold: boolean;
+    isHighlightedVerb: boolean;
+    isHighlightedNoun: boolean;
   }[] = [];
 
   const parsingOffset = window.__BIONIC_PARSING_OFFSET || 0;
@@ -193,9 +231,14 @@ function computeBionicGlyphs(glyphs: Glyph[]) {
         _log(`Word started: ${wordStartIdx}`);
       } else {
         // If the word has not started and we encounter a space, the word has not started
+        // 检查是否为句尾标点
+        const isSentenceEndChar = SENTENCE_END_CHARS.includes(str);
+
         newGlyphData.push({
           glyphs: glyphs.slice(i, i + 1),
           isBold: false,
+          isHighlightedVerb: false,
+          isHighlightedNoun: false,
         });
         continue;
       }
@@ -213,10 +256,27 @@ function computeBionicGlyphs(glyphs: Glyph[]) {
 
     word = word.replace(/<EMPTY>/g, "\u2060");
 
+    // 检查词性
+    const isCurrentWordVerb = isVerb(word);
+    const isCurrentWordNoun = isNoun(word);
+
+    // 添加互斥逻辑 - 如果一个词同时被识别为动词和名词，优先选择动词标记
+    let finalIsVerb = isCurrentWordVerb;
+    let finalIsNoun = isCurrentWordNoun;
+
+    // 避免同时标记为动词和名词
+    if (finalIsVerb && finalIsNoun) {
+      // 这里我们优先选择动词标记
+      finalIsNoun = false;
+      _log("词同时被识别为动词和名词，优先标记为动词", word);
+    }
+
     if (wordEndIdx === wordStartIdx || !CONVERTIBLE_REGEX.test(word)) {
       newGlyphData.push({
         glyphs: glyphs.slice(wordStartIdx, wordEndIdx + 1),
         isBold: false,
+        isHighlightedVerb: finalIsVerb,
+        isHighlightedNoun: finalIsNoun
       });
       wordStartIdx = NaN;
       wordEndIdx = NaN;
@@ -268,12 +328,16 @@ function computeBionicGlyphs(glyphs: Glyph[]) {
     newGlyphData.push({
       glyphs: glyphs.slice(wordStartIdx, wordStartIdx + boldNumber),
       isBold: true,
+      isHighlightedVerb: finalIsVerb,
+      isHighlightedNoun: finalIsNoun
     });
 
     if (wordStartIdx + boldNumber <= wordEndIdx) {
       newGlyphData.push({
         glyphs: glyphs.slice(wordStartIdx + boldNumber, wordEndIdx + 1),
         isBold: false,
+        isHighlightedVerb: finalIsVerb,
+        isHighlightedNoun: finalIsNoun
       });
     }
 
@@ -287,6 +351,8 @@ function computeBionicGlyphs(glyphs: Glyph[]) {
     newGlyphData.push({
       glyphs: glyphs.slice(wordStartIdx, wordStartIdx + glyphs.length),
       isBold: false,
+      isHighlightedVerb: false,
+      isHighlightedNoun: false
     });
   }
   return newGlyphData;
@@ -299,6 +365,6 @@ function refresh() {
 
 function _log(...args: any[]) {
   if (__env__ === "development") {
-    console.log("[Bionic for Zotero]", ...args);
+    console.log("[Colorful Bionic]", ...args);
   }
 }

@@ -1,9 +1,9 @@
-# Bionic for Zotero Reader
+# Colorful Bionic
 
 [![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 [![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 
-**Bio**nic **read**ing **exper**ience **wi**th **Zot**ero.
+**Color**ful **bio**nic **read**ing **exper**ience **wi**th **Zot**ero. **High**light **verb**s **an**d **nou**ns **i**n **differ**ent **colo**rs.
 
 <div align=center><img src="./docs/res/teaser.png" width="800px"></img></div>
 
@@ -19,19 +19,19 @@
 
 [🔔 Disclaimer](#-disclaimer)
 
-[🔎 My Zotero Plugins](#-my-zotero-plugins)
+[🙏 Acknowledgements](#-acknowledgements)
 
 [🤗 Contributors](#-contributors)
 
 ## 🧐 What is this?
 
-Bionic for Zotero is a Zotero plugin that implements a bionic reading experience in the Zotero reader.
+Colorful Bionic is a Zotero plugin that implements a colorful bionic reading experience in the Zotero reader. It highlights verbs and nouns in different colors to enhance reading comprehension.
 
 ### What is bionic reading?
 
 Bionic Reading is a reading method designed to make it easier and faster to comprehend text by guiding the reader's eyes through bolded initial letters of words. This technique emphasizes the beginning of each word, allowing the brain to "fill in" the rest of the word and phrase intuitively, leveraging cognitive shortcuts.
 
-**A**s **sho**wn **i**n **th**is **sent**ence, **t**he **bol**ded **init**ial **lett**ers **o**f **ea**ch **wo**rd **a**re **us**ed **t**o **gui**de **t**he **read**er's **ey**es **thro**ugh **t**he **te**xt, **mak**ing **i**t **eas**ier **t**o **compr**ehend.
+**A**s **sho**wn **i**n **th**is **sent**ence, **t**he **bol**ded **init**ial **lett**ers **o**f **ea**ch **wo**rd **a**re **us**ed **t**o **gui**de **t**he **read**er's **ey**es **thro**ugh **t**he **te**xt, **mak**ing **i**t **eas**ier **t**o **compr**ehend.
 
 ### Why bionic reading works/doesn't work?
 
@@ -43,8 +43,8 @@ Want to know more? Check out the latest research on [Google Scholar](https://sch
 
 - Download the plugin (.xpi file) from below.
 
-  - [Latest Stable](https://github.com/windingwind/bionic-for-zotero/releases/latest)
-  - [All Releases](https://github.com/windingwind/bionic-for-zotero/releases)
+  - [Latest Stable](https://github.com/DrUsagi/Colorful-Bionic/releases/latest)
+  - [All Releases](https://github.com/DrUsagi/Colorful-Bionic/releases)
 
   _Note_: If you're using Firefox as your browser, right-click the `.xpi` and select "Save As.."
 
@@ -58,7 +58,8 @@ Want to know more? Check out the latest research on [Google Scholar](https://sch
 
 1. Open a PDF in the Zotero reader.
 2. The PDF will be displayed in bionic reading mode by default.
-3. To toggle bionic reading mode, use the `View` menu in the top menu bar.
+3. To toggle bionic reading mode and other features, use the `View` menu in the top menu bar or the BIO button in the toolbar.
+4. You can highlight verbs and nouns in different colors to enhance comprehension.
 
 ## 🔧 Development
 
@@ -67,8 +68,8 @@ This plugin is built based on the [Zotero Plugin Template](https://github.com/wi
 To start, run
 
 ```bash
-git clone https://github.com/windingwind/bionic-for-zotero.git
-cd bionic-for-zotero
+git clone https://github.com/DrUsagi/Colorful-Bionic.git
+cd Colorful-Bionic
 npm install
 npm run build
 ```
@@ -79,14 +80,11 @@ The plugin is built to `./builds/*.xpi`.
 
 Use this code under AGPL. No warranties are provided. Keep the laws of your locality in mind!
 
-## 🔎 My Zotero Plugins
+## 🙏 Acknowledgements
 
-- [Better Notes for Zotero](https://github.com/windingwind/zotero-better-notes): Everything about note management. All in Zotero.
-- [Translate for Zotero](https://github.com/windingwind/zotero-pdf-translate/): Translate PDF, EPub, webpage, metadata, annotations, notes to the target language. Support 20+ translate services.
-- [Actions & Tags for Zotero](https://github.com/windingwind/zotero-tag): Customize your Zotero workflow.
+Colorful Bionic是在[windingwind](https://github.com/windingwind)开发的[Bionic for Zotero](https://github.com/windingwind/bionic-for-zotero)插件基础上修改而来的。在此特别感谢windingwind的贡献和开创性工作，使这个增强版本得以实现。原插件提供了基本的Bionic阅读功能，而本版本增加了多彩词性高亮等功能。
 
 ## 🤗 Contributors
 
-<a href="https://github.com/windingwind/bionic-for-zotero/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=windingwind/bionic-for-zotero" />
-</a>
+- DrUsagi (Current Maintainer)
+- [windingwind](https://github.com/windingwind) (Original Author of Bionic for Zotero)
