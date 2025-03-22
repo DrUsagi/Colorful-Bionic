@@ -2,105 +2,108 @@
   <html:link rel="localization" href="__addonRef__-preferences.ftl" />
 </linkset>
 <groupbox>
-  <label><html:h2 data-l10n-id="basic-title"></html:h2></label>
-  <checkbox
-    id="__addonRef__-enableBionicReader"
-    preference="__prefsPrefix__.enableBionicReader"
-    data-l10n-id="enableBionicReader"
-    native="true"
-  />
-  <checkbox
-    id="__addonRef__-enableReaderToolbarButton"
-    preference="__prefsPrefix__.enableReaderToolbarButton"
-    data-l10n-id="enableReaderToolbarButton"
-    native="true"
-    oncommand="Zotero.__addonInstance__.hooks.onShowRestartDialog();"
-  />
+  <label>
+    <html:h2 data-l10n-id="basic-title"></html:h2>
+  </label>
+  <checkbox id="__addonRef__-enableBionicReader" preference="__prefsPrefix__.enableBionicReader"
+    data-l10n-id="enableBionicReader" native="true" />
+  <checkbox id="__addonRef__-enableReaderToolbarButton" preference="__prefsPrefix__.enableReaderToolbarButton"
+    data-l10n-id="enableReaderToolbarButton" native="true"
+    oncommand="Zotero.__addonInstance__.hooks.onShowRestartDialog();" />
   <hbox align="center">
-    <html:label
-      data-l10n-id="disableForLanguages"
-      for="__addonRef__-disableForLanguages"
-    ></html:label>
-    <html:input
-      id="__addonRef__-disableForLanguages"
-      preference="__prefsPrefix__.disableForLanguages"
-      data-l10n-id="disableForLanguagesInput"
-      type="text"
-    ></html:input>
+    <html:label data-l10n-id="disableForLanguages" for="__addonRef__-disableForLanguages"></html:label>
+    <html:input id="__addonRef__-disableForLanguages" preference="__prefsPrefix__.disableForLanguages"
+      data-l10n-id="disableForLanguagesInput" type="text"></html:input>
   </hbox>
 </groupbox>
 <groupbox id="__addonRef__-parsing">
-  <label><html:h2 data-l10n-id="parsing-title"></html:h2></label>
+  <label>
+    <html:h2 data-l10n-id="parsing-title"></html:h2>
+  </label>
   <hbox align="center">
-    <html:label
-      data-l10n-id="opacityContrast"
-      for="__addonRef__-opacityContrast"
-    ></html:label>
-    <html:input
-      id="__addonRef__-opacityContrast"
-      preference="__prefsPrefix__.opacityContrast"
-      type="number"
-      min="1"
-      max="5"
-      step="1"
-    ></html:input>
+    <html:label data-l10n-id="opacityContrast" for="__addonRef__-opacityContrast"></html:label>
+    <html:input id="__addonRef__-opacityContrast" preference="__prefsPrefix__.opacityContrast" type="number" min="1"
+      max="5" step="1"></html:input>
   </hbox>
   <hbox align="center">
-    <html:label
-      data-l10n-id="weightContrast"
-      for="__addonRef__-weightContrast"
-    ></html:label>
-    <html:input
-      id="__addonRef__-weightContrast"
-      preference="__prefsPrefix__.weightContrast"
-      type="number"
-      min="1"
-      max="5"
-      step="1"
-    ></html:input>
+    <html:label data-l10n-id="weightContrast" for="__addonRef__-weightContrast"></html:label>
+    <html:input id="__addonRef__-weightContrast" preference="__prefsPrefix__.weightContrast" type="number" min="1"
+      max="5" step="1"></html:input>
   </hbox>
   <hbox align="center">
-    <html:label
-      data-l10n-id="weightOffset"
-      for="__addonRef__-weightOffset"
-    ></html:label>
-    <html:input
-      id="__addonRef__-weightOffset"
-      preference="__prefsPrefix__.weightOffset"
-      type="number"
-      min="-3"
-      max="3"
-      step="1"
-    ></html:input>
+    <html:label data-l10n-id="weightOffset" for="__addonRef__-weightOffset"></html:label>
+    <html:input id="__addonRef__-weightOffset" preference="__prefsPrefix__.weightOffset" type="number" min="-3" max="3"
+      step="1"></html:input>
   </hbox>
   <hbox align="center">
-    <html:label
-      data-l10n-id="parsingOffset"
-      for="__addonRef__-parsingOffset"
-    ></html:label>
-    <html:input
-      id="__addonRef__-parsingOffset"
-      preference="__prefsPrefix__.parsingOffset"
-      type="number"
-      min="-5"
-      max="5"
-      step="1"
-    ></html:input>
+    <html:label data-l10n-id="parsingOffset" for="__addonRef__-parsingOffset"></html:label>
+    <html:input id="__addonRef__-parsingOffset" preference="__prefsPrefix__.parsingOffset" type="number" min="-5"
+      max="5" step="1"></html:input>
   </hbox>
   <vbox no-highlight="true">
-    <html:div id="__addonRef__-parsingPreview"
-      >Zotero is a free, easy-to-use tool to help you collect, organize,
-      annotate, cite, and share research.</html:div
-    >
+    <html:div id="__addonRef__-parsingPreview">Zotero is a free, easy-to-use tool to help you collect, organize,
+      annotate, cite, and share research.</html:div>
     <hbox id="__addonRef__-parsingPreviewWarning" align="center">
       <html:img src="chrome://zotero/skin/20/universal/error.svg"></html:img>
       <html:div data-l10n-id="parsingPreviewWarning"></html:div>
     </hbox>
   </vbox>
 </groupbox>
+
+<groupbox id="__addonRef__-verbs">
+  <label>
+    <html:h2 data-l10n-id="highlights-title"></html:h2>
+  </label>
+  <!-- 动词高亮 -->
+  <vbox>
+    <checkbox id="__addonRef__-highlightVerbs" preference="__prefsPrefix__.highlightVerbs" data-l10n-id="highlightVerbs"
+      native="true" />
+    <hbox align="center" class="color-picker-container">
+      <html:label data-l10n-id="verbHighlightColor" for="__addonRef__-verbHighlightColor"></html:label>
+      <html:input id="__addonRef__-verbHighlightColor" preference="__prefsPrefix__.verbHighlightColor" type="color"
+        class="color-picker">
+      </html:input>
+      <html:div class="color-presets">
+        <html:div class="color-preset" style="background-color: #FF5252;" data-color="#FF5252"
+          data-target="__addonRef__-verbHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #FF9800;" data-color="#FF9800"
+          data-target="__addonRef__-verbHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #FF4081;" data-color="#FF4081"
+          data-target="__addonRef__-verbHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #9C27B0;" data-color="#9C27B0"
+          data-target="__addonRef__-verbHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #673AB7;" data-color="#673AB7"
+          data-target="__addonRef__-verbHighlightColor"></html:div>
+      </html:div>
+    </hbox>
+  </vbox>
+
+  <!-- 名词高亮 -->
+  <vbox>
+    <checkbox id="__addonRef__-highlightNouns" preference="__prefsPrefix__.highlightNouns" data-l10n-id="highlightNouns"
+      native="true" />
+    <hbox align="center" class="color-picker-container">
+      <html:label data-l10n-id="nounHighlightColor" for="__addonRef__-nounHighlightColor"></html:label>
+      <html:input id="__addonRef__-nounHighlightColor" preference="__prefsPrefix__.nounHighlightColor" type="color"
+        class="color-picker">
+      </html:input>
+      <html:div class="color-presets">
+        <html:div class="color-preset" style="background-color: #5252FF;" data-color="#5252FF"
+          data-target="__addonRef__-nounHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #2196F3;" data-color="#2196F3"
+          data-target="__addonRef__-nounHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #00BCD4;" data-color="#00BCD4"
+          data-target="__addonRef__-nounHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #4CAF50;" data-color="#4CAF50"
+          data-target="__addonRef__-nounHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #8BC34A;" data-color="#8BC34A"
+          data-target="__addonRef__-nounHighlightColor"></html:div>
+      </html:div>
+    </hbox>
+  </vbox>
+</groupbox>
+
 <vbox id="__addonRef__-pluginInfo">
-  <html:label
-    data-l10n-id="pref-help"
-    data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
-  ></html:label>
+  <html:label data-l10n-id="pref-help"
+    data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'></html:label>
 </vbox>

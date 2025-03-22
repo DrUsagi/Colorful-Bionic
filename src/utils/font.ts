@@ -1,5 +1,11 @@
 export { computeFont };
 
+interface FontData {
+  font: string;
+  alpha: number;
+  weight: string;
+}
+
 function computeFont(options: {
   font: string;
   alpha: number;
@@ -13,10 +19,12 @@ function computeFont(options: {
     bold: {
       font: "",
       alpha: alpha,
+      weight: ""
     },
     light: {
       font: "",
       alpha: alpha,
+      weight: ""
     },
   };
 
@@ -62,5 +70,10 @@ function computeFont(options: {
 
   computedData.bold.font = `${italic} ${boldWeight} ${baseFont}`;
   computedData.light.font = `${italic} ${lightWeight} ${baseFont}`;
+
+  // 添加weight属性
+  computedData.bold.weight = boldWeight.toString();
+  computedData.light.weight = lightWeight.toString();
+
   return computedData;
 }

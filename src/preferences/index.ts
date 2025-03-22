@@ -10,71 +10,69 @@ function main() {
   }, 1000);
 }
 
-main();
-
-let initialized = false;
-
 function init() {
-  if (initialized) {
+  // If this is not the bionic pane, don't do anything
+  if (document.querySelector(`#${config.addonRef}-pane`) === null) {
     return;
   }
-  const parsingContainer = document.querySelector(
-    `#${config.addonRef}-parsing`,
-  );
-  if (!parsingContainer) {
-    return;
-  }
-  initialized = true;
-  document
-    .querySelector("#prefs-navigation")
-    ?.removeEventListener("select", init);
 
-  parsingContainer.addEventListener("input", (event) => {
-    updatePreview();
-  });
+  // Attach event listeners
+  document
+    .querySelector(`#${config.addonRef}-opacityContrast`)
+    ?.addEventListener("change", updatePreview);
+  document
+    .querySelector(`#${config.addonRef}-weightContrast`)
+    ?.addEventListener("change", updatePreview);
+  document
+    .querySelector(`#${config.addonRef}-weightOffset`)
+    ?.addEventListener("change", updatePreview);
+  document
+    .querySelector(`#${config.addonRef}-parsingOffset`)
+    ?.addEventListener("change", updatePreview);
+
+  // 初始化颜色预设选择器
+  initColorPresets();
+
   updatePreview();
 }
 
-const PREVIEW_STRING =
-  "Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research.";
-const BIONIC_GROUPS = [
-  { startIdx: 0, endIdx: 3, isBold: true },
-  { startIdx: 3, endIdx: 7, isBold: false },
-  { startIdx: 7, endIdx: 8, isBold: true },
-  { startIdx: 8, endIdx: 10, isBold: false },
-  { startIdx: 10, endIdx: 11, isBold: true },
-  { startIdx: 11, endIdx: 12, isBold: false },
-  { startIdx: 12, endIdx: 14, isBold: true },
-  { startIdx: 14, endIdx: 18, isBold: false },
-  { startIdx: 18, endIdx: 20, isBold: true },
-  { startIdx: 20, endIdx: 23, isBold: false },
-  { startIdx: 23, endIdx: 24, isBold: true },
-  { startIdx: 24, endIdx: 26, isBold: false },
-  { startIdx: 26, endIdx: 27, isBold: true },
-  { startIdx: 27, endIdx: 30, isBold: false },
-  { startIdx: 30, endIdx: 32, isBold: true },
-  { startIdx: 32, endIdx: 35, isBold: false },
-  { startIdx: 35, endIdx: 36, isBold: true },
-  { startIdx: 36, endIdx: 38, isBold: false },
-  { startIdx: 38, endIdx: 40, isBold: true },
-  { startIdx: 40, endIdx: 43, isBold: false },
-  { startIdx: 43, endIdx: 44, isBold: true },
-  { startIdx: 44, endIdx: 47, isBold: false },
-  { startIdx: 47, endIdx: 51, isBold: true },
-  { startIdx: 51, endIdx: 56, isBold: false },
-  { startIdx: 56, endIdx: 60, isBold: true },
-  { startIdx: 60, endIdx: 66, isBold: false },
-  { startIdx: 66, endIdx: 70, isBold: true },
-  { startIdx: 70, endIdx: 76, isBold: false },
-  { startIdx: 76, endIdx: 78, isBold: true },
-  { startIdx: 78, endIdx: 82, isBold: false },
-  { startIdx: 82, endIdx: 83, isBold: true },
-  { startIdx: 83, endIdx: 86, isBold: false },
-  { startIdx: 86, endIdx: 89, isBold: true },
-  { startIdx: 89, endIdx: 92, isBold: false },
-  { startIdx: 92, endIdx: 96, isBold: true },
-  { startIdx: 96, endIdx: 101, isBold: false },
-];
+function initColorPresets() {
+  // 查找所有颜色预设
+  const presets = document.querySelectorAll('.color-preset');
+
+  presets.forEach(preset => {
+    preset.addEventListener('click', function (this: HTMLElement) {
+      const target = this.getAttribute('data-target');
+      const color = this.getAttribute('data-color');
+
+      if (!target || !color) return;
+
+      // 获取目标ID，替换addonRef占位符
+      const realTarget = target.replace('__addonRef__', config.addonRef);
+
+      // 设置对应的颜色选择器的值
+      const colorPicker = document.querySelector(`#${realTarget}`) as HTMLInputElement;
+      if (colorPicker) {
+        colorPicker.value = color;
+
+        // 触发change事件，使其保存到偏好设置
+        const event = new Event('change', { bubbles: true });
+        colorPicker.dispatchEvent(event);
+
+        // 直接设置对应的首选项值
+        const prefName = colorPicker.getAttribute('preference');
+        if (prefName) {
+          try {
+            // 使用Zotero API设置首选项
+            (window as any).Zotero.Prefs.set(prefName, color);
+          } catch (e) {
+            console.error('无法设置首选项:', e);
+          }
+        }
+      }
+    });
+  });
+}
 
 function updatePreview() {
   const previewContainer = document.querySelector(
@@ -125,38 +123,40 @@ function updatePreview() {
 
   previewContainer.innerHTML = "";
 
-  for (let i = 0; i < BIONIC_GROUPS.length; i++) {
-    const group = BIONIC_GROUPS[i];
-    let startIdx = group.startIdx;
-    let endIdx = group.endIdx;
-    if (parsingOffset) {
-      const nextGroup = BIONIC_GROUPS[i + 1];
-      const prevGroup = BIONIC_GROUPS[i - 1];
-      if (group.isBold && nextGroup) {
-        endIdx = Math.max(
-          // Can grow until the next group ends
-          Math.min(endIdx + parsingOffset, nextGroup.endIdx),
-          startIdx + 1,
-        );
-      } else if (!group.isBold && prevGroup) {
-        startIdx = Math.min(
-          // Can shrink until the previous group starts
-          Math.max(startIdx + parsingOffset, prevGroup.startIdx + 1),
-          endIdx,
-        );
-      }
-    }
-
-    if (startIdx >= endIdx) {
-      continue;
-    }
-
+  // Generate a preview of the bionic reading
+  const textContent =
+    "Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research.";
+  const words = textContent.split(" ");
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
     const span = document.createElement("span");
-    span.textContent = PREVIEW_STRING.slice(startIdx, endIdx);
-    span.style.font = group.isBold ? fontData.bold.font : fontData.light.font;
-    if (!group.isBold) {
-      span.style.opacity = String(fontData.light.alpha);
+    span.style.fontFamily = '"Roboto", sans-serif';
+    span.style.fontSize = "14px";
+
+    // We only bolden the beginning of the word, so we need to split the word
+    let boldPart = 1;
+    if (word.length >= 4) {
+      boldPart = Math.ceil(word.length / 2);
     }
+    boldPart += parsingOffset;
+    boldPart = Math.max(Math.min(boldPart, word.length), 1);
+
+    // Create the bolded part
+    const boldSpan = document.createElement("span");
+    boldSpan.style.fontWeight = fontData.bold.weight;
+    boldSpan.textContent = word.slice(0, boldPart);
+
+    // Create the rest of the word
+    const normalSpan = document.createElement("span");
+    normalSpan.style.fontWeight = fontData.light.weight;
+    normalSpan.style.opacity = fontData.light.alpha.toString();
+    normalSpan.textContent = word.slice(boldPart);
+
+    span.appendChild(boldSpan);
+    span.appendChild(normalSpan);
     previewContainer.appendChild(span);
+    previewContainer.appendChild(document.createTextNode(" "));
   }
 }
+
+main();
