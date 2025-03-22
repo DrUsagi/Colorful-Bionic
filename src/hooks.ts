@@ -13,6 +13,8 @@ async function onStartup() {
     Zotero.uiReadyPromise,
   ]);
 
+  ztoolkit.log("插件启动...");
+
   initLocale();
 
   initPreferencePane();
@@ -24,6 +26,8 @@ async function onStartup() {
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
   );
+
+  ztoolkit.log("插件初始化完成");
 }
 
 async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
@@ -35,7 +39,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
 async function onMainWindowUnload(
   win: _ZoteroTypes.MainWindow,
-): Promise<void> {}
+): Promise<void> { }
 
 function onShutdown(): void {
   unInitSettings();
@@ -48,7 +52,14 @@ function onShutdown(): void {
   delete Zotero[config.addonInstance];
 }
 
-const onRefreshReaders = refreshReaders;
+const onRefreshReaders = async () => {
+  ztoolkit.log("触发刷新阅读器...");
+  await refreshReaders();
+
+  // 重新初始化阅读器，确保事件监听器正确应用
+  ztoolkit.log("重新初始化阅读器...");
+  initReader();
+};
 
 const onShowRestartDialog = showRestartDialog;
 

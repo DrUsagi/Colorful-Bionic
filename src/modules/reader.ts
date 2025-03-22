@@ -11,17 +11,41 @@ const scriptContent = {
 };
 
 function initReader() {
+  ztoolkit.log("初始化阅读器...");
+
   Zotero.Reader.registerEventListener(
     "renderToolbar",
     (event) => {
+      ztoolkit.log("正在处理renderToolbar事件...", event);
       injectScript(event);
       injectToolbarButton(event);
     },
     addon.data.config.addonID,
   );
 
+  // 确保对已打开的读者应用脚本和工具栏按钮
+  ztoolkit.log("处理现有阅读器...", Zotero.Reader._readers.length);
   Zotero.Reader._readers.forEach((reader) => {
+    ztoolkit.log("注入脚本到现有阅读器...", reader.type);
     injectScript({ reader });
+
+    // 也尝试为现有阅读器添加工具栏按钮
+    if (reader._iframeWindow && reader._iframeWindow.document) {
+      const doc = reader._iframeWindow.document;
+      const toolbar = doc.querySelector(".toolbar");
+      if (toolbar) {
+        ztoolkit.log("为现有阅读器添加工具栏按钮...");
+        injectToolbarButton({
+          reader,
+          doc,
+          append: (...elems) => {
+            for (const elem of elems) {
+              toolbar.appendChild(elem);
+            }
+          }
+        });
+      }
+    }
   });
 }
 
@@ -107,12 +131,24 @@ function injectToolbarButton(event: {
 }) {
   const { reader, doc, append } = event;
 
+  ztoolkit.log("注入工具栏按钮...", reader.type, getPref("enableReaderToolbarButton"));
+
   if (reader.type !== "pdf") {
+    ztoolkit.log("不是PDF阅读器，跳过工具栏按钮注入");
+    return;
+  }
+
+  // 检查是否已经存在按钮，避免重复添加
+  const existingButton = doc.querySelector(`.${addon.data.config.addonRef}-reader-button`);
+  if (existingButton) {
+    ztoolkit.log("工具栏按钮已存在，更新状态");
+    updateReaderToolbarButton(existingButton as HTMLButtonElement, reader);
     return;
   }
 
   // Bio按钮 - 控制Bionic阅读模式
   if (getPref("enableReaderToolbarButton")) {
+    ztoolkit.log("创建Bio按钮元素");
     const bioButton = ztoolkit.UI.createElement(doc, "button", {
       namespace: "html",
       classList: [
@@ -143,11 +179,49 @@ function injectToolbarButton(event: {
             // 创建并显示设置菜单
             const menu = createBioOptionsMenu(doc, reader);
             menu.style.position = "absolute";
-            menu.style.top = `${rect.bottom}px`;
-            menu.style.left = `${rect.left}px`;
+
+            // 修改弹出位置：菜单显示在按钮左侧
+            const menuWidth = 220; // 估计的菜单宽度，略大于minWidth以确保足够空间
+            menu.style.top = `${rect.top}px`;
+
+            // 检查按钮左侧的空间是否足够，如果不够则显示在按钮右侧
+            if (rect.left >= menuWidth + 10) { // 10px的安全距离
+              // 有足够空间在左侧显示
+              menu.style.left = `${rect.left - menuWidth}px`;
+            } else {
+              // 左侧空间不足，尝试在右侧显示
+              menu.style.left = `${rect.right}px`;
+            }
 
             // 添加到DOM
             doc.body.appendChild(menu);
+
+            // 检查实际菜单位置是否超出窗口边界，并进行调整
+            setTimeout(() => {
+              const menuRect = menu.getBoundingClientRect();
+
+              // 检查左侧边界
+              if (menuRect.left < 0) {
+                menu.style.left = "5px"; // 保持5px的边距
+              }
+
+              // 检查右侧边界
+              const windowWidth = window.innerWidth;
+              if (menuRect.right > windowWidth) {
+                menu.style.left = `${windowWidth - menuRect.width - 5}px`; // 保持5px的边距
+              }
+
+              // 检查顶部边界
+              if (menuRect.top < 0) {
+                menu.style.top = "5px";
+              }
+
+              // 检查底部边界
+              const windowHeight = window.innerHeight;
+              if (menuRect.bottom > windowHeight) {
+                menu.style.top = `${windowHeight - menuRect.height - 5}px`;
+              }
+            }, 0);
 
             // 定义关闭菜单的函数
             const closeMenu = (e: MouseEvent) => {
@@ -170,8 +244,12 @@ function injectToolbarButton(event: {
       ],
       enableElementRecord: false,
     });
+    ztoolkit.log("更新Bio按钮状态");
     updateReaderToolbarButton(bioButton, reader);
+    ztoolkit.log("添加Bio按钮到工具栏");
     append(bioButton);
+  } else {
+    ztoolkit.log("Bio按钮已禁用，跳过添加");
   }
 }
 
@@ -188,6 +266,10 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   menu.style.padding = "8px";
   menu.style.zIndex = "1000";
   menu.style.minWidth = "200px";
+
+  // 添加防止菜单位置超出视图范围的处理
+  menu.style.maxHeight = "80vh";
+  menu.style.overflowY = "auto";
 
   // 阻止菜单上的点击事件冒泡
   menu.addEventListener("click", (e) => {
@@ -548,8 +630,10 @@ async function waitForReaderPDFViewer(
 }
 
 async function refreshReader(reader: _ZoteroTypes.ReaderInstance) {
+  ztoolkit.log("刷新阅读器...", reader.type);
   const win = await waitForReaderPDFViewer(reader);
   if (!win) {
+    ztoolkit.log("找不到PDF查看器窗口");
     return;
   }
   setWindowPrefs(reader, win);
@@ -558,8 +642,28 @@ async function refreshReader(reader: _ZoteroTypes.ReaderInstance) {
   const bioButton = reader._iframeWindow?.document.querySelector(
     `.${addon.data.config.addonRef}-reader-button`,
   ) as HTMLButtonElement;
+
   if (bioButton) {
+    ztoolkit.log("更新已存在的Bio按钮");
     updateReaderToolbarButton(bioButton, reader, win.__BIONIC_READER_ENABLED);
+  } else {
+    ztoolkit.log("Bio按钮不存在，尝试重新创建");
+    // 如果按钮不存在，尝试重新添加
+    if (reader._iframeWindow && getPref("enableReaderToolbarButton")) {
+      const doc = reader._iframeWindow.document;
+      const toolbar = doc.querySelector(".toolbar");
+      if (toolbar) {
+        injectToolbarButton({
+          reader,
+          doc,
+          append: (...elems) => {
+            for (const elem of elems) {
+              toolbar.appendChild(elem);
+            }
+          }
+        });
+      }
+    }
   }
 
   await win.PDFViewerApplication?.pdfViewer?.refresh();

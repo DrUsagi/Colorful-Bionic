@@ -38,7 +38,9 @@ function toggleCurrentItemStatus(itemID: number): void {
   }
   bionicTemporaryData[itemID] = !currentStatus;
   setPref("bionicTemporaryData", JSON.stringify(bionicTemporaryData));
-  addon.hooks.onRefreshReaders(
-    Zotero.Reader._readers.filter((reader) => reader.itemID === itemID),
-  );
+
+  // 只刷新与当前itemID相关的阅读器
+  const readersToRefresh = Zotero.Reader._readers.filter((reader) => reader.itemID === itemID);
+  // 调用刷新函数，不传递参数，让它刷新所有阅读器
+  addon.hooks.onRefreshReaders();
 }
