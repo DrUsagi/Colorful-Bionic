@@ -2,6 +2,7 @@
 import { wait } from "zotero-plugin-toolkit";
 import { computeFont } from "../utils/font";
 import { isVerb, isNoun } from "../utils/nlp";
+import { isConjunction } from "../utils/conjunction";
 
 import type {
   PDFPage,
@@ -21,7 +22,7 @@ let intentStatesPrototype: any;
 
 let firstRenderTriggered = false;
 
-let isWordBroken = false;
+const isWordBroken = false;
 
 function main() {
   patchIntentStatesGet();
@@ -101,10 +102,10 @@ function patchCanvasGraphicsShowText(
 
   // @ts-ignore Runtime generated method on prototype
   canvasGraphicsPrototype[pdfjsLib.OPS.showText] = function (glyphs: Glyph[]) {
-    // 判断是否需要应用样式
     const needsProcessing = window.__BIONIC_READER_ENABLED ||
       window.__BIONIC_HIGHLIGHT_VERBS ||
-      window.__BIONIC_HIGHLIGHT_NOUNS;
+      window.__BIONIC_HIGHLIGHT_NOUNS ||
+      window.__BIONIC_HIGHLIGHT_CONJUNCTIONS;
 
     if (!needsProcessing) {
       return original_showText.apply(this, [glyphs]);
@@ -128,14 +129,16 @@ function patchCanvasGraphicsShowText(
 
     const newGlyphData = computeBionicGlyphs(glyphs);
 
-    for (const { glyphs: newG, isBold, isHighlightedVerb, isHighlightedNoun } of newGlyphData) {
-      // 词性高亮处理 - 添加互斥逻辑，确保一个词只有一种颜色
-      // 避免一个词同时被多种颜色标注
-      if (window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb && window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun) {
-        // 当同时满足动词和名词条件时，选择一种颜色（这里以动词为优先）
+    for (const { glyphs: newG, isBold, isHighlightedVerb, isHighlightedNoun, isHighlightedConjunction } of newGlyphData) {
+      // 词性高亮处理
+      if (window.__BIONIC_HIGHLIGHT_CONJUNCTIONS && isHighlightedConjunction) {
         this.ctx.save();
-        this.ctx.fillStyle = window.__BIONIC_VERB_HIGHLIGHT_COLOR || "#FF5252";
-        _log("词同时是动词和名词，优先显示为动词");
+        this.ctx.fillStyle = window.__BIONIC_CONJUNCTION_HIGHLIGHT_COLOR || "#FFA500";
+      } else if (window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb && window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun) {
+        // 当同时满足动词和名词条件时，选择名词颜色
+        this.ctx.save();
+        this.ctx.fillStyle = window.__BIONIC_NOUN_HIGHLIGHT_COLOR || "#5252FF";
+        _log("词同时是动词和名词，优先显示为名词");
       } else if (window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb) {
         this.ctx.save();
         this.ctx.fillStyle = window.__BIONIC_VERB_HIGHLIGHT_COLOR || "#FF5252";
@@ -156,7 +159,8 @@ function patchCanvasGraphicsShowText(
       original_showText.apply(this, [newG]);
 
       if ((window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb) ||
-        (window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun)) {
+        (window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun) ||
+        (window.__BIONIC_HIGHLIGHT_CONJUNCTIONS && isHighlightedConjunction)) {
         this.ctx.restore();
       }
 
@@ -168,193 +172,120 @@ function patchCanvasGraphicsShowText(
     return undefined;
   };
   _log("Patched showText", window.__BIONIC_READER_ENABLED);
-  if (window.__BIONIC_READER_ENABLED || window.__BIONIC_HIGHLIGHT_VERBS || window.__BIONIC_HIGHLIGHT_NOUNS) {
+  if (window.__BIONIC_READER_ENABLED || window.__BIONIC_HIGHLIGHT_VERBS || window.__BIONIC_HIGHLIGHT_NOUNS || window.__BIONIC_HIGHLIGHT_CONJUNCTIONS) {
     refresh();
   }
 }
 
 function computeBionicGlyphs(glyphs: Glyph[]) {
-  let wordStartIdx = NaN;
-  let wordEndIdx = NaN;
-  let word = "";
   const newGlyphData: {
     glyphs: Glyph[];
     isBold: boolean;
     isHighlightedVerb: boolean;
     isHighlightedNoun: boolean;
+    isHighlightedConjunction: boolean;
   }[] = [];
 
   const parsingOffset = window.__BIONIC_PARSING_OFFSET || 0;
-
-  // From text-vide
   const CONVERTIBLE_REGEX = /(\p{L}|\p{Nd})*\p{L}(\p{L}|\p{Nd})*/u;
-
   const NON_VOWELS_REGEX = /[^aeiou]/gi;
 
-  // Use a regex to match all non-alphanumeric characters, e.g. space, punctuation, etc.
-  // But should not match other unicode characters like emojis or cjks
-  const SEPARATOR_REGEX = /[\p{P}\p{S}\p{Z}]/u;
+  let currentWord = "";
+  let currentWordStart = 0;
+  let currentWordGlyphs: Glyph[] = [];
 
-  function getStr(glyph: Glyph) {
-    if (typeof glyph === "number") {
-      if (glyph < -100) {
-        return " ";
-      } else {
-        return "<EMPTY>";
-      }
-    }
-    return glyph.unicode;
-  }
+  function processCurrentWord() {
+    if (!currentWord || !currentWordGlyphs.length) return;
 
-  for (let i = 0; i < glyphs.length; i++) {
-    const glyph = glyphs[i];
-    const str = getStr(glyph);
-    const isWordSeparator = SEPARATOR_REGEX.test(str);
-
-    const isWordStarted = !Number.isNaN(wordStartIdx);
-    if (isWordStarted) {
-      if (isWordSeparator || i === glyphs.length - 1) {
-        // If the word has started and we encounter a space, the word has ended
-        wordEndIdx = i;
-        word += str;
-        _log(`Word ended: ${wordStartIdx} ${wordEndIdx}`);
-      } else {
-        // If the word has started and we encounter a non-space, the word has not ended
-        word += str;
-        continue;
-      }
-    } else {
-      if (!isWordSeparator) {
-        // If the word has not started and we encounter a non-space, the word has started
-        wordStartIdx = i;
-        word += str;
-        _log(`Word started: ${wordStartIdx}`);
-      } else {
-        // If the word has not started and we encounter a space, the word has not started
-        // 检查是否为句尾标点
-        const isSentenceEndChar = SENTENCE_END_CHARS.includes(str);
-
-        newGlyphData.push({
-          glyphs: glyphs.slice(i, i + 1),
-          isBold: false,
-          isHighlightedVerb: false,
-          isHighlightedNoun: false,
-        });
-        continue;
-      }
-    }
-    const isWordEnded = isWordStarted && !Number.isNaN(wordEndIdx);
-    if (!isWordEnded) {
-      continue;
-    }
-
-    // If the word has ended, bolden the first alphabet of the word
-    // const word = showTextArgs.slice(wordStartIdx, wordEndIdx).map((arg) => {
-    //     return arg.unicode;
-    // }).join("");
-    _log(`Boldening word: ${wordStartIdx} ${wordEndIdx}`, word);
-
-    word = word.replace(/<EMPTY>/g, "\u2060");
-
-    // 检查词性
-    const isCurrentWordVerb = isVerb(word);
-    const isCurrentWordNoun = isNoun(word);
-
-    // 添加互斥逻辑 - 如果一个词同时被识别为动词和名词，优先选择动词标记
-    let finalIsVerb = isCurrentWordVerb;
-    let finalIsNoun = isCurrentWordNoun;
-
-    // 避免同时标记为动词和名词
-    if (finalIsVerb && finalIsNoun) {
-      // 这里我们优先选择动词标记
-      finalIsNoun = false;
-      _log("词同时被识别为动词和名词，优先标记为动词", word);
-    }
-
-    if (wordEndIdx === wordStartIdx || !CONVERTIBLE_REGEX.test(word)) {
+    if (!CONVERTIBLE_REGEX.test(currentWord)) {
       newGlyphData.push({
-        glyphs: glyphs.slice(wordStartIdx, wordEndIdx + 1),
+        glyphs: currentWordGlyphs,
         isBold: false,
-        isHighlightedVerb: finalIsVerb,
-        isHighlightedNoun: finalIsNoun
+        isHighlightedVerb: false,
+        isHighlightedNoun: false,
+        isHighlightedConjunction: false
       });
-      wordStartIdx = NaN;
-      wordEndIdx = NaN;
-      word = "";
-      continue;
+      return;
     }
+
+    // 修改词性判断顺序，优先判断连词
+    const isCurrentWordConjunction = isConjunction(currentWord);
+    const isCurrentWordVerb = !isCurrentWordConjunction && isVerb(currentWord);
+    const isCurrentWordNoun = !isCurrentWordConjunction && !isCurrentWordVerb && isNoun(currentWord);
+
+    // 简化词性判断逻辑，确保连词优先级最高
+    const finalIsConjunction = isCurrentWordConjunction;
+    const finalIsVerb = !finalIsConjunction && isCurrentWordVerb;
+    const finalIsNoun = !finalIsConjunction && !finalIsVerb && isCurrentWordNoun;
 
     let boldNumber = 1;
+    const wordLength = currentWordGlyphs.length;
 
-    const wordLength = wordEndIdx + 1 - wordStartIdx;
-    const isPreviousWordBroken = isWordBroken;
-    isWordBroken =
-      word.endsWith("\u2060") && wordLength >= 1 && wordLength <= 10;
-    // If the word ends with a zero-width space, it may be broken
-    if (isPreviousWordBroken && !isWordBroken) {
-      // If the previous word was broken and the current word is not broken, skip boldening
-      boldNumber = 0;
-      isWordBroken = false;
-    } else if (isWordBroken) {
-      // If the word is broken, bolden the entire word as it is the first part
-      _log("The word may be broken", word.slice(wordStartIdx, wordEndIdx + 1));
-      boldNumber = wordLength;
-    } else if (wordLength < 4) {
+    if (wordLength < 4) {
       boldNumber = 1;
     } else {
       boldNumber = Math.ceil(wordLength / 2);
-
       if (boldNumber > 6) {
-        // Find the closest non-vowel character to the bold number
-        const nonVowels = word.matchAll(NON_VOWELS_REGEX);
-        const closestMatch = Array.from(nonVowels).sort((a, b) => {
-          return (
-            Math.abs(a.index! - boldNumber) - Math.abs(b.index! - boldNumber)
-          );
-        })[0];
-        if (closestMatch && Math.abs(closestMatch.index - boldNumber) < 2) {
+        const nonVowels = currentWord.matchAll(NON_VOWELS_REGEX);
+        const closestMatch = Array.from(nonVowels).sort((a, b) => 
+          Math.abs(a.index! - boldNumber) - Math.abs(b.index! - boldNumber)
+        )[0];
+        if (closestMatch && Math.abs(closestMatch.index! - boldNumber) < 2) {
           boldNumber = closestMatch.index! + 1;
         }
       }
     }
 
     boldNumber += parsingOffset;
-
-    // Clamp the bold number to the word length
     boldNumber = Math.max(Math.min(boldNumber, wordLength), 1);
 
-    _log("Word length", wordLength, boldNumber);
-
     newGlyphData.push({
-      glyphs: glyphs.slice(wordStartIdx, wordStartIdx + boldNumber),
+      glyphs: currentWordGlyphs.slice(0, boldNumber),
       isBold: true,
       isHighlightedVerb: finalIsVerb,
-      isHighlightedNoun: finalIsNoun
+      isHighlightedNoun: finalIsNoun,
+      isHighlightedConjunction: finalIsConjunction
     });
 
-    if (wordStartIdx + boldNumber <= wordEndIdx) {
+    if (boldNumber < wordLength) {
       newGlyphData.push({
-        glyphs: glyphs.slice(wordStartIdx + boldNumber, wordEndIdx + 1),
+        glyphs: currentWordGlyphs.slice(boldNumber),
         isBold: false,
         isHighlightedVerb: finalIsVerb,
-        isHighlightedNoun: finalIsNoun
+        isHighlightedNoun: finalIsNoun,
+        isHighlightedConjunction: finalIsConjunction
       });
     }
-
-    wordStartIdx = NaN;
-    wordEndIdx = NaN;
-    word = "";
   }
 
-  // If the last word has not ended, push it
-  if (!Number.isNaN(wordStartIdx)) {
-    newGlyphData.push({
-      glyphs: glyphs.slice(wordStartIdx, wordStartIdx + glyphs.length),
-      isBold: false,
-      isHighlightedVerb: false,
-      isHighlightedNoun: false
-    });
+  for (let i = 0; i < glyphs.length; i++) {
+    const glyph = glyphs[i];
+    const str = typeof glyph === "number" 
+      ? (glyph < -100 ? " " : "") 
+      : glyph.unicode;
+
+    // 检查是否是空格或标点符号
+    if (/[\s\p{P}]/u.test(str)) {
+      processCurrentWord();
+      newGlyphData.push({
+        glyphs: [glyph],
+        isBold: false,
+        isHighlightedVerb: false,
+        isHighlightedNoun: false,
+        isHighlightedConjunction: false
+      });
+      currentWord = "";
+      currentWordGlyphs = [];
+      currentWordStart = i + 1;
+    } else {
+      currentWord += str;
+      currentWordGlyphs.push(glyph);
+    }
   }
+
+  // 处理最后一个单词
+  processCurrentWord();
+
   return newGlyphData;
 }
 

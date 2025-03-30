@@ -11,6 +11,7 @@ const PREFS_TO_OBSERVE = [
   "enableReaderToolbarButton",
   "highlightVerbs",
   "highlightNouns",
+  "highlightConjunctions",
 ];
 
 function initSettings() {

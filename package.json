@@ -1,13 +1,13 @@
 {
   "name": "bionic-for-zotero",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Colorful bionic reading experience with Zotero.",
   "config": {
     "addonName": "Colorful Bionic",
-    "addonID": "bionicReader@euclpts.com",
-    "addonRef": "bionicReader",
-    "addonInstance": "BionicReader",
-    "prefsPrefix": "extensions.bionicReader"
+    "addonID": "colorfulBionic@drusagi.com",
+    "addonRef": "colorfulBionic",
+    "addonInstance": "ColorfulBionic",
+    "prefsPrefix": "extensions.colorfulBionic"
   },
   "repository": {
     "type": "git",

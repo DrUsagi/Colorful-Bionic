@@ -101,6 +101,30 @@
       </html:div>
     </hbox>
   </vbox>
+
+  <!-- 连词高亮 -->
+  <vbox>
+    <checkbox id="__addonRef__-highlightConjunctions" preference="__prefsPrefix__.highlightConjunctions" data-l10n-id="highlightConjunctions"
+      native="true" />
+    <hbox align="center" class="color-picker-container">
+      <html:label data-l10n-id="conjunctionHighlightColor" for="__addonRef__-conjunctionHighlightColor"></html:label>
+      <html:input id="__addonRef__-conjunctionHighlightColor" preference="__prefsPrefix__.conjunctionHighlightColor" type="color"
+        class="color-picker">
+      </html:input>
+      <html:div class="color-presets">
+        <html:div class="color-preset" style="background-color: #FFA500;" data-color="#FFA500"
+          data-target="__addonRef__-conjunctionHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #FF9800;" data-color="#FF9800"
+          data-target="__addonRef__-conjunctionHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #FF7043;" data-color="#FF7043"
+          data-target="__addonRef__-conjunctionHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #F57C00;" data-color="#F57C00"
+          data-target="__addonRef__-conjunctionHighlightColor"></html:div>
+        <html:div class="color-preset" style="background-color: #FB8C00;" data-color="#FB8C00"
+          data-target="__addonRef__-conjunctionHighlightColor"></html:div>
+      </html:div>
+    </hbox>
+  </vbox>
 </groupbox>
 
 <vbox id="__addonRef__-pluginInfo">

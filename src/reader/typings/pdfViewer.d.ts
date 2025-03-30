@@ -15,6 +15,8 @@ declare global {
     __BIONIC_VERB_HIGHLIGHT_COLOR?: string;
     __BIONIC_HIGHLIGHT_NOUNS?: boolean;
     __BIONIC_NOUN_HIGHLIGHT_COLOR?: string;
+    __BIONIC_HIGHLIGHT_CONJUNCTIONS?: boolean;
+    __BIONIC_CONJUNCTION_HIGHLIGHT_COLOR?: string;
   }
 }
 

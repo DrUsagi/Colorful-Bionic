@@ -12,3 +12,5 @@ pref("__prefsPrefix__.highlightNouns", false);
 pref("__prefsPrefix__.nounHighlightColor", "#5252FF");
 pref("__prefsPrefix__.showSentenceDivider", false);
 pref("__prefsPrefix__.sentenceDividerColor", "#FF0000");
+pref("__prefsPrefix__.highlightConjunctions", false);
+pref("__prefsPrefix__.conjunctionHighlightColor", "#FFA500");

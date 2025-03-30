@@ -2,6 +2,7 @@
  * 自然语言处理模块，用于智能检测词性并高亮显示
  */
 import nlp from 'compromise';
+import { isConjunction as checkConjunction } from './conjunction';
 
 // 定义类型
 interface Term {
@@ -16,8 +17,21 @@ interface NLPResult {
     [key: string]: any;
 }
 
+interface WordAnalysis {
+    word: string;
+    isVerb: boolean;
+    isNoun: boolean;
+    isConjunction: boolean;
+}
+
+interface CacheEntry {
+    isVerb: boolean;
+    isNoun: boolean;
+    isConjunction: boolean;
+}
+
 // 词性缓存，避免重复处理相同单词
-const partOfSpeechCache = new Map<string, { isVerb: boolean, isNoun: boolean }>();
+const partOfSpeechCache = new Map<string, CacheEntry>();
 
 // 常见名词后缀
 const NOUN_SUFFIXES = [
@@ -70,8 +84,6 @@ const COMMON_MISIDENTIFIED_NOUNS = new Set([
 
 /**
  * 基于后缀分析判断词是否为名词
- * @param word 单词
- * @returns 基于后缀判断是否可能为名词
  */
 function isNounBySuffix(word: string): boolean {
     const lowerWord = word.toLowerCase();
@@ -96,8 +108,6 @@ function isNounBySuffix(word: string): boolean {
 
 /**
  * 基于后缀分析判断词是否为动词
- * @param word 单词
- * @returns 基于后缀判断是否可能为动词
  */
 function isVerbBySuffix(word: string): boolean {
     const lowerWord = word.toLowerCase();
@@ -117,8 +127,6 @@ function isVerbBySuffix(word: string): boolean {
 
 /**
  * 基于前缀分析判断词是否为名词
- * @param word 单词
- * @returns 基于前缀判断是否可能为名词
  */
 function isNounByPrefix(word: string): boolean {
     const lowerWord = word.toLowerCase();
@@ -133,8 +141,6 @@ function isNounByPrefix(word: string): boolean {
 
 /**
  * 基于前缀分析判断词是否为动词
- * @param word 单词
- * @returns 基于前缀判断是否可能为动词
  */
 function isVerbByPrefix(word: string): boolean {
     const lowerWord = word.toLowerCase();
@@ -153,9 +159,15 @@ function isVerbByPrefix(word: string): boolean {
 }
 
 /**
+ * 清理单词，移除标点符号等
+ */
+function cleanupWord(word: string): string {
+    if (!word) return '';
+    return word.toLowerCase().replace(/[.,#!$%&*;:{}=\-_`~()?:"'[\]]/g, "");
+}
+
+/**
  * 检测单词是否为动词
- * @param word 待检查的单词
- * @returns 是否为动词
  */
 export function isVerb(word: string): boolean {
     // 清理单词
@@ -169,7 +181,11 @@ export function isVerb(word: string): boolean {
 
     // 如果单词在常见被误识别的名词列表中，直接返回false
     if (COMMON_MISIDENTIFIED_NOUNS.has(cleanWord.toLowerCase())) {
-        updateCache(cleanWord, false, true);
+        partOfSpeechCache.set(cleanWord, { 
+            isVerb: false, 
+            isNoun: true,
+            isConjunction: checkConjunction(cleanWord)
+        });
         return false;
     }
 
@@ -177,6 +193,7 @@ export function isVerb(word: string): boolean {
     const doc = nlp(cleanWord);
     const isVerbWord = doc.verbs().json().length > 0;
     const isNounWord = doc.nouns().json().length > 0;
+    const isConjunctionWord = checkConjunction(cleanWord);
 
     // 基于前缀后缀分析进行二次确认
     const isVerbBySuffixAnalysis = isVerbBySuffix(cleanWord);
@@ -216,15 +233,17 @@ export function isVerb(word: string): boolean {
     }
 
     // 缓存结果
-    updateCache(cleanWord, finalIsVerb, finalIsNoun);
+    partOfSpeechCache.set(cleanWord, { 
+        isVerb: finalIsVerb, 
+        isNoun: finalIsNoun,
+        isConjunction: isConjunctionWord
+    });
 
     return finalIsVerb;
 }
 
 /**
  * 检测单词是否为名词
- * @param word 待检查的单词
- * @returns 是否为名词
  */
 export function isNoun(word: string): boolean {
     // 清理单词
@@ -239,7 +258,11 @@ export function isNoun(word: string): boolean {
     // 如果单词在常见名词列表或被误识别的名词列表中，直接返回true
     if (COMMON_NOUNS.has(cleanWord.toLowerCase()) ||
         COMMON_MISIDENTIFIED_NOUNS.has(cleanWord.toLowerCase())) {
-        updateCache(cleanWord, false, true);
+        partOfSpeechCache.set(cleanWord, { 
+            isVerb: false, 
+            isNoun: true,
+            isConjunction: checkConjunction(cleanWord)
+        });
         return true;
     }
 
@@ -247,6 +270,7 @@ export function isNoun(word: string): boolean {
     const doc = nlp(cleanWord);
     const isVerbWord = doc.verbs().json().length > 0;
     const isNounWord = doc.nouns().json().length > 0;
+    const isConjunctionWord = checkConjunction(cleanWord);
 
     // 基于前缀后缀分析进行二次确认
     const isVerbBySuffixAnalysis = isVerbBySuffix(cleanWord);
@@ -286,22 +310,24 @@ export function isNoun(word: string): boolean {
     }
 
     // 缓存结果
-    updateCache(cleanWord, finalIsVerb, finalIsNoun);
+    partOfSpeechCache.set(cleanWord, { 
+        isVerb: finalIsVerb, 
+        isNoun: finalIsNoun,
+        isConjunction: isConjunctionWord
+    });
 
     return finalIsNoun;
 }
 
 /**
  * 分析文本，返回所有单词的词性分析结果，使用上下文信息增强准确性
- * @param text 待分析文本
- * @returns 分析结果，包含每个单词及其词性
  */
-export function analyzeText(text: string): { word: string, isVerb: boolean, isNoun: boolean }[] {
+export function analyzeText(text: string): WordAnalysis[] {
     if (!text) return [];
 
     // 使用NLP进行整句分析，以获取上下文
     const doc = nlp(text);
-    const results: { word: string, isVerb: boolean, isNoun: boolean }[] = [];
+    const results: WordAnalysis[] = [];
 
     try {
         // 获取句子结构
@@ -320,8 +346,9 @@ export function analyzeText(text: string): { word: string, isVerb: boolean, isNo
                 const tags = term.tags || [];
 
                 // 判断是否确定为动词或名词
-                let isVerbByNLP = tags.includes('Verb');
-                let isNounByNLP = tags.includes('Noun');
+                const isVerbByNLP = tags.includes('Verb');
+                const isNounByNLP = tags.includes('Noun');
+                const isConjunctionWord = checkConjunction(cleanWord);
 
                 // 基于前后文检查
                 // 检查是否有冠词、形容词或限定词在前面 (可能表示是名词)
@@ -381,27 +408,35 @@ export function analyzeText(text: string): { word: string, isVerb: boolean, isNo
                 }
 
                 // 缓存结果
-                updateCache(cleanWord, finalIsVerb, finalIsNoun);
+                partOfSpeechCache.set(cleanWord, { 
+                    isVerb: finalIsVerb, 
+                    isNoun: finalIsNoun,
+                    isConjunction: isConjunctionWord 
+                });
 
                 return {
                     word,
                     isVerb: finalIsVerb,
-                    isNoun: finalIsNoun
+                    isNoun: finalIsNoun,
+                    isConjunction: isConjunctionWord
                 };
             }).filter(Boolean);
 
-            results.push(...terms as { word: string, isVerb: boolean, isNoun: boolean }[]);
+            results.push(...terms as WordAnalysis[]);
         }
     } catch (e) {
         // 如果上下文分析失败，回退到简单的词汇分析
         const words = text.match(/\b[\w']+\b/g) || [];
 
         for (const word of words) {
-            results.push({
+            const cleanWord = cleanupWord(word);
+            const wordAnalysis = {
                 word,
                 isVerb: isVerb(word),
-                isNoun: isNoun(word)
-            });
+                isNoun: isNoun(word),
+                isConjunction: checkConjunction(cleanWord)
+            };
+            results.push(wordAnalysis);
         }
     }
 
@@ -409,18 +444,17 @@ export function analyzeText(text: string): { word: string, isVerb: boolean, isNo
 }
 
 /**
- * 清理单词，移除标点符号等
+ * 检测单词是否为连词
  */
-function cleanupWord(word: string): string {
-    if (!word) return '';
-    return word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?:"'\[\]]/g, "");
+export function isConjunction(word: string): boolean {
+    return checkConjunction(word);
 }
 
 /**
  * 更新词性缓存
  */
-function updateCache(word: string, isVerb: boolean, isNoun: boolean): void {
-    partOfSpeechCache.set(word, { isVerb, isNoun });
+function updateCache(word: string, isVerb: boolean, isNoun: boolean, isConjunction: boolean = false): void {
+    partOfSpeechCache.set(word, { isVerb, isNoun, isConjunction });
 
     // 限制缓存大小，防止内存泄漏
     if (partOfSpeechCache.size > 10000) {

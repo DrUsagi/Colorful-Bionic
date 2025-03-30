@@ -1,6 +1,6 @@
 import { wait } from "zotero-plugin-toolkit";
 import { getPref } from "../utils/prefs";
-import { getCurrentItemStatus, toggleCurrentItemStatus } from "../utils/status";
+import { getCurrentItemStatus, toggleCurrentItemStatus, getHighlightStatus, setHighlightStatus } from "../utils/status";
 
 export { initReader, unInitReader, refreshReaders };
 
@@ -196,49 +196,19 @@ function injectToolbarButton(event: {
             // 添加到DOM
             doc.body.appendChild(menu);
 
-            // 检查实际菜单位置是否超出窗口边界，并进行调整
-            setTimeout(() => {
-              const menuRect = menu.getBoundingClientRect();
-
-              // 检查左侧边界
-              if (menuRect.left < 0) {
-                menu.style.left = "5px"; // 保持5px的边距
-              }
-
-              // 检查右侧边界
-              const windowWidth = window.innerWidth;
-              if (menuRect.right > windowWidth) {
-                menu.style.left = `${windowWidth - menuRect.width - 5}px`; // 保持5px的边距
-              }
-
-              // 检查顶部边界
-              if (menuRect.top < 0) {
-                menu.style.top = "5px";
-              }
-
-              // 检查底部边界
-              const windowHeight = window.innerHeight;
-              if (menuRect.bottom > windowHeight) {
-                menu.style.top = `${windowHeight - menuRect.height - 5}px`;
-              }
-            }, 0);
-
-            // 定义关闭菜单的函数
+            // 添加全局点击事件来关闭菜单
             const closeMenu = (e: MouseEvent) => {
-              // 确保点击不是在菜单内部
-              if (!menu.contains(e.target as Node) || e.target === button) {
+              const target = e.target as HTMLElement;
+              if (!menu.contains(target) && !button.contains(target)) {
                 menu.remove();
-                doc.removeEventListener("click", closeMenu, true);
-                doc.removeEventListener("mousedown", closeMenu, true);
+                doc.removeEventListener('click', closeMenu);
               }
             };
-
-            // 延迟添加点击监听，避免立即触发
+            
+            // 延迟添加事件监听器，避免立即触发
             setTimeout(() => {
-              // 使用捕获阶段监听点击事件以确保优先处理
-              doc.addEventListener("click", closeMenu, true);
-              doc.addEventListener("mousedown", closeMenu, true);
-            }, 100);
+              doc.addEventListener('click', closeMenu);
+            }, 0);
           },
         },
       ],
@@ -259,25 +229,31 @@ function injectToolbarButton(event: {
 function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance): HTMLElement {
   const menu = doc.createElement("div");
   menu.className = `${addon.data.config.addonRef}-bio-menu`;
-  menu.style.background = "#fff";
-  menu.style.border = "1px solid #ccc";
-  menu.style.borderRadius = "3px";
-  menu.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
-  menu.style.padding = "8px";
-  menu.style.zIndex = "1000";
-  menu.style.minWidth = "200px";
+  menu.style.cssText = `
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 1000;
+    width: max-content;
+    user-select: none;
+  `;
 
-  // 添加防止菜单位置超出视图范围的处理
-  menu.style.maxHeight = "80vh";
-  menu.style.overflowY = "auto";
-
-  // 阻止菜单上的点击事件冒泡
-  menu.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
-  menu.addEventListener("mousedown", (e) => {
-    e.stopPropagation();
+  // 确保菜单创建后立即同步所有状态
+  waitForReaderPDFViewer(reader).then(win => {
+    if (win) {
+      // 使用正确的状态获取函数
+      win.__BIONIC_READER_ENABLED = getCurrentItemStatus(reader.itemID || -1);
+      win.__BIONIC_HIGHLIGHT_VERBS = getHighlightStatus(reader.itemID || -1, 'verbs');
+      win.__BIONIC_HIGHLIGHT_NOUNS = getHighlightStatus(reader.itemID || -1, 'nouns');
+      win.__BIONIC_HIGHLIGHT_CONJUNCTIONS = getHighlightStatus(reader.itemID || -1, 'conjunctions');
+      // 刷新视图以显示更改
+      win.PDFViewerApplication?.pdfViewer?.refresh();
+    }
   });
 
   // 创建Bionic阅读模式开关（黑白模式）
@@ -288,7 +264,19 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
     async (checked: boolean) => {
       // 更新设置
       toggleCurrentItemStatus(reader.itemID || -1);
-    }
+      // 刷新视图
+      const win = await waitForReaderPDFViewer(reader);
+      if (win) {
+        win.__BIONIC_READER_ENABLED = getCurrentItemStatus(reader.itemID || -1);
+        await win.PDFViewerApplication?.pdfViewer?.refresh();
+      }
+      // 更新按钮状态
+      const button = doc.querySelector(`.${addon.data.config.addonRef}-reader-button`) as HTMLButtonElement;
+      if (button) {
+        updateReaderToolbarButton(button, reader);
+      }
+    },
+    getCurrentItemStatus(reader.itemID || -1)  // 传入当前文章的实际状态
   );
 
   const bionicDesc = doc.createElement("div");
@@ -297,11 +285,6 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   bionicDesc.style.color = "#666";
   bionicDesc.style.marginLeft = "20px";
   bionicDesc.style.marginBottom = "5px";
-
-  // 阻止描述文本上的点击事件冒泡
-  bionicDesc.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
 
   menu.appendChild(bionicOption);
   menu.appendChild(bionicDesc);
@@ -315,11 +298,6 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   highlightTitle.style.fontWeight = "bold";
   highlightTitle.style.marginBottom = "5px";
 
-  // 阻止标题上的点击事件冒泡
-  highlightTitle.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
   menu.appendChild(highlightTitle);
 
   // 创建动词高亮选项
@@ -329,14 +307,20 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
     "高亮动词",
     async (checked: boolean) => {
       // 更新设置
-      Zotero.Prefs.set(`${addon.data.config.prefsPrefix}.highlightVerbs`, checked);
+      setHighlightStatus(reader.itemID || -1, 'verbs', checked);
       // 刷新视图
       const win = await waitForReaderPDFViewer(reader);
       if (win) {
         win.__BIONIC_HIGHLIGHT_VERBS = checked;
         await win.PDFViewerApplication?.pdfViewer?.refresh();
       }
-    }
+      // 更新按钮状态
+      const button = doc.querySelector(`.${addon.data.config.addonRef}-reader-button`) as HTMLButtonElement;
+      if (button) {
+        updateReaderToolbarButton(button, reader);
+      }
+    },
+    getHighlightStatus(reader.itemID || -1, 'verbs')  // 使用新函数获取当前状态
   );
   menu.appendChild(verbOption);
 
@@ -372,14 +356,20 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
     "高亮名词",
     async (checked: boolean) => {
       // 更新设置
-      Zotero.Prefs.set(`${addon.data.config.prefsPrefix}.highlightNouns`, checked);
+      setHighlightStatus(reader.itemID || -1, 'nouns', checked);
       // 刷新视图
       const win = await waitForReaderPDFViewer(reader);
       if (win) {
         win.__BIONIC_HIGHLIGHT_NOUNS = checked;
         await win.PDFViewerApplication?.pdfViewer?.refresh();
       }
-    }
+      // 更新按钮状态
+      const button = doc.querySelector(`.${addon.data.config.addonRef}-reader-button`) as HTMLButtonElement;
+      if (button) {
+        updateReaderToolbarButton(button, reader);
+      }
+    },
+    getHighlightStatus(reader.itemID || -1, 'nouns')  // 使用新函数获取当前状态
   );
   menu.appendChild(nounOption);
 
@@ -408,6 +398,55 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   );
   menu.appendChild(nounColorOption);
 
+  // 创建连词高亮选项
+  const conjunctionOption = createOptionCheckbox(
+    doc,
+    "highlightConjunctions",
+    "高亮连词",
+    async (checked: boolean) => {
+      // 更新设置
+      setHighlightStatus(reader.itemID || -1, 'conjunctions', checked);
+      // 刷新视图
+      const win = await waitForReaderPDFViewer(reader);
+      if (win) {
+        win.__BIONIC_HIGHLIGHT_CONJUNCTIONS = checked;
+        await win.PDFViewerApplication?.pdfViewer?.refresh();
+      }
+      // 更新按钮状态
+      const button = doc.querySelector(`.${addon.data.config.addonRef}-reader-button`) as HTMLButtonElement;
+      if (button) {
+        updateReaderToolbarButton(button, reader);
+      }
+    },
+    getHighlightStatus(reader.itemID || -1, 'conjunctions')  // 使用新函数获取当前状态
+  );
+  menu.appendChild(conjunctionOption);
+
+  // 添加连词颜色选择器
+  const conjunctionColorOption = createColorOption(
+    doc,
+    "conjunctionHighlightColor",
+    "连词颜色: ",
+    [
+      { color: "#FFA500", id: "conjunction-color-1" },
+      { color: "#FF9800", id: "conjunction-color-2" },
+      { color: "#FF7043", id: "conjunction-color-3" },
+      { color: "#F57C00", id: "conjunction-color-4" },
+      { color: "#FB8C00", id: "conjunction-color-5" }
+    ],
+    async (color: string) => {
+      // 更新设置
+      Zotero.Prefs.set(`${addon.data.config.prefsPrefix}.conjunctionHighlightColor`, color);
+      // 刷新视图
+      const win = await waitForReaderPDFViewer(reader);
+      if (win) {
+        win.__BIONIC_CONJUNCTION_HIGHLIGHT_COLOR = color;
+        await win.PDFViewerApplication?.pdfViewer?.refresh();
+      }
+    }
+  );
+  menu.appendChild(conjunctionColorOption);
+
   return menu;
 }
 
@@ -418,7 +457,8 @@ function createOptionCheckbox(
   doc: Document,
   prefName: string,
   label: string,
-  onChange: (checked: boolean) => void
+  onChange: (checked: boolean) => void,
+  initialState: boolean
 ): HTMLElement {
   const container = doc.createElement("div");
   container.style.margin = "8px 0";
@@ -427,7 +467,10 @@ function createOptionCheckbox(
 
   const checkbox = doc.createElement("input");
   checkbox.type = "checkbox";
-  checkbox.checked = Boolean(getPref(prefName));
+  
+  // 获取当前实际状态
+  checkbox.checked = initialState;
+  
   checkbox.style.marginRight = "8px";
 
   // 修改事件处理，阻止冒泡
@@ -444,6 +487,9 @@ function createOptionCheckbox(
   labelElem.textContent = label;
   labelElem.addEventListener("click", (e) => {
     e.stopPropagation();
+    // 点击标签时也切换复选框状态
+    checkbox.checked = !checkbox.checked;
+    onChange(checkbox.checked);
   });
 
   container.appendChild(checkbox);
@@ -564,45 +610,48 @@ function updateReaderToolbarButton(
   if (!button) {
     return;
   }
-  if (enableBionicReader === undefined) {
-    enableBionicReader = getCurrentItemStatus(reader.itemID || -1);
-  }
-
-  // 获取高亮状态
-  const highlightVerbs = Boolean(getPref("highlightVerbs"));
-  const highlightNouns = Boolean(getPref("highlightNouns"));
-  const hasHighlights = highlightVerbs || highlightNouns;
-
+  
+  // 获取各功能的状态
+  const bionicEnabled = enableBionicReader !== undefined 
+    ? enableBionicReader 
+    : getCurrentItemStatus(reader.itemID || -1);
+  const verbsEnabled = getHighlightStatus(reader.itemID || -1, 'verbs');
+  const nounsEnabled = getHighlightStatus(reader.itemID || -1, 'nouns');
+  const conjunctionsEnabled = getHighlightStatus(reader.itemID || -1, 'conjunctions');
+  
   // 创建状态指示器
   let statusText = "";
-  if (highlightVerbs) statusText += "V";
-  if (highlightNouns) statusText += "N";
+  if (verbsEnabled) statusText += '<span style="color: #FF5252; text-shadow: 0 0 1px rgba(0,0,0,0.2);">V</span>';
+  if (nounsEnabled) statusText += '<span style="color: #5252FF; text-shadow: 0 0 1px rgba(0,0,0,0.2);">N</span>';
+  if (conjunctionsEnabled) statusText += '<span style="color: #FFA500; text-shadow: 0 0 1px rgba(0,0,0,0.2);">C</span>';
 
   // 设置提示文本
-  if (enableBionicReader && hasHighlights) {
-    button.title = "Bionic阅读 + 词性标注已启用";
-  } else if (enableBionicReader) {
-    button.title = "Bionic阅读已启用";
-  } else if (hasHighlights) {
-    button.title = "词性标注已启用";
+  const tooltipParts = [];
+  if (bionicEnabled) tooltipParts.push("Bionic阅读");
+  if (verbsEnabled) tooltipParts.push("动词高亮");
+  if (nounsEnabled) tooltipParts.push("名词高亮");
+  if (conjunctionsEnabled) tooltipParts.push("连词高亮");
+  
+  button.title = tooltipParts.length > 0 
+    ? tooltipParts.join(" + ") + "已启用" 
+    : "点击启用功能";
+
+  // 设置按钮样式和内容
+  let buttonContent = "";
+  if (bionicEnabled) {
+    buttonContent = `<span style="color: #4285f4"><b>Bi</b><span style="font-weight: lighter">o</span></span>`;
   } else {
-    button.title = "点击启用功能";
+    buttonContent = `<span style="color: ${verbsEnabled || nounsEnabled || conjunctionsEnabled ? "#4285f4" : ""}">Bio</span>`;
   }
 
-  // 设置按钮样式，根据当前状态
-  if (enableBionicReader) {
-    button.innerHTML = `<b>Bi</b><span style="font-weight: lighter">o</span>`;
-    button.style.color = "#4285f4";
-  } else {
-    button.innerHTML = "Bio";
-    button.style.color = "";
-  }
-
-  // 如果有词性高亮，添加指示器
+  // 添加状态指示器
   if (statusText) {
-    button.innerHTML += `<sup style="font-size: 10px; font-weight: bold; color: ${enableBionicReader ? "#FFFFFF" : "#4285f4"}">${statusText}</sup>`;
+    buttonContent += `<sup style="font-size: 10px; font-weight: bold">${statusText}</sup>`;
   }
 
+  // 一次性设置完整的HTML内容
+  button.innerHTML = buttonContent;
+  button.style.color = ""; // 清除按钮的全局颜色样式
   button.disabled = false;
 }
 
@@ -686,10 +735,18 @@ function setWindowPrefs(reader: _ZoteroTypes.ReaderInstance, win: Window) {
   win.__BIONIC_OPACITY_CONTRAST = Number(getPref("opacityContrast")) || 0;
   win.__BIONIC_WEIGHT_CONTRAST = Number(getPref("weightContrast")) || 0;
   win.__BIONIC_WEIGHT_OFFSET = Number(getPref("weightOffset")) || 0;
-  win.__BIONIC_HIGHLIGHT_VERBS = Boolean(getPref("highlightVerbs"));
+  win.__BIONIC_HIGHLIGHT_VERBS = getHighlightStatus(reader.itemID || -1, 'verbs');
   win.__BIONIC_VERB_HIGHLIGHT_COLOR = String(getPref("verbHighlightColor") || "#FF5252");
-  win.__BIONIC_HIGHLIGHT_NOUNS = Boolean(getPref("highlightNouns"));
+  win.__BIONIC_HIGHLIGHT_NOUNS = getHighlightStatus(reader.itemID || -1, 'nouns');
   win.__BIONIC_NOUN_HIGHLIGHT_COLOR = String(getPref("nounHighlightColor") || "#5252FF");
+  win.__BIONIC_HIGHLIGHT_CONJUNCTIONS = getHighlightStatus(reader.itemID || -1, 'conjunctions');
+  win.__BIONIC_CONJUNCTION_HIGHLIGHT_COLOR = String(getPref("conjunctionHighlightColor") || "#FFA500");
+  
+  // 更新按钮状态
+  const button = win.document.querySelector(`.${addon.data.config.addonRef}-reader-button`) as HTMLButtonElement;
+  if (button) {
+    updateReaderToolbarButton(button, reader);
+  }
 }
 
 function deleteWindowPrefs(win: Window) {
@@ -702,4 +759,6 @@ function deleteWindowPrefs(win: Window) {
   delete win.__BIONIC_VERB_HIGHLIGHT_COLOR;
   delete win.__BIONIC_HIGHLIGHT_NOUNS;
   delete win.__BIONIC_NOUN_HIGHLIGHT_COLOR;
+  delete win.__BIONIC_HIGHLIGHT_CONJUNCTIONS;
+  delete win.__BIONIC_CONJUNCTION_HIGHLIGHT_COLOR;
 }
