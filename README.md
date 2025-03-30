@@ -5,7 +5,14 @@
 
 **Color**ful **bio**nic **read**ing **exper**ience **wi**th **Zot**ero. **High**light **verb**s **an**d **nou**ns **i**n **differ**ent **colo**rs.
 
-<div align=center><img src="./temp_images/teaser.png" width="800px"></img></div>
+<div align=center><img src="./temp_images/teaser3.png" width="800px"></img></div>
+
+## Personal Usage Recommendations
+
+Based on personal experience, I recommend enabling black Bionic text and verb highlighting. Using verbs as memory anchors in sentences can significantly improve reading speed for individuals with ADHD. Additionally, highlighting only verbs keeps the text clean and less visually overwhelming.
+
+Depending on your reading style, enabling conjunction highlighting can also enhance the reading experience. When you notice longer yellow-highlighted conjunctions (such as "however", "in addition", etc.), they often serve as important markers that help you understand paragraph structure and content flow.
+<div align=center><img src="./temp_images/teaser2.png" width="800px"></img></div>
 
 ## 🧩 Outline
 
@@ -25,7 +32,7 @@
 
 ## 🧐 What is this?
 
-Colorful Bionic is a Zotero plugin that implements a colorful bionic reading experience in the Zotero reader. It highlights verbs and nouns in different colors to enhance reading comprehension.
+Colorful Bionic is a Zotero plugin that implements a colorful bionic reading experience in the Zotero reader. It highlights verbs nouns and conjunction in different colors to enhance reading comprehension.
 
 ### What is bionic reading?
 
@@ -58,7 +65,7 @@ Want to know more? Check out the latest research on [Google Scholar](https://sch
 
 1. Open a PDF in the Zotero reader.
 2. The PDF will be displayed in bionic reading mode by default.
-3. To toggle bionic reading mode and other features, use the `View` menu in the top menu bar or the BIO button in the toolbar.
+3. To toggle bionic reading mode and other features, use the `Bio` menu in the top menu bar or the BIO button in the toolbar.
 4. You can highlight verbs and nouns in different colors to enhance comprehension.
 
 ## 🔧 Development
@@ -81,6 +88,9 @@ The plugin is built to `./builds/*.xpi`.
 Use this code under AGPL. No warranties are provided. Keep the laws of your locality in mind!
 
 ## 🙏 Acknowledgements
+
+Colorful Bionic is a modified version based on Bionic for Zotero plugin [Bionic for Zotero](https://github.com/windingwind/bionic-for-zotero) developed by [windingwind](https://github.com/windingwind). 
+Special thanks to windingwind for his contribution and pioneering work, which made this enhanced version possible. While the original plugin provides basic Bionic reading functionality, this version adds features like colorful part-of-speech highlighting.
 
 Colorful Bionic是在[windingwind](https://github.com/windingwind)开发的[Bionic for Zotero](https://github.com/windingwind/bionic-for-zotero)插件基础上修改而来的。在此特别感谢windingwind的贡献和开创性工作，使这个增强版本得以实现。原插件提供了基本的Bionic阅读功能，而本版本增加了多彩词性高亮等功能。
 
