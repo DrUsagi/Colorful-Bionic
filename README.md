@@ -60,6 +60,7 @@ The effectiveness of Bionic Reading is a subject of ongoing debate, largely beca
 Want to know more? Check out the latest research on [Google Scholar](https://scholar.google.com/scholar?q=bionic%20reading).
 
 ## 👋 Install
+- Prerequisites: Zotero `< v9.0.*`
 
 - Download the plugin (.xpi file) from below.
 
