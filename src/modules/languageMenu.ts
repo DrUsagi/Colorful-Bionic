@@ -41,25 +41,35 @@ function renderLanguageMenu(doc: Document) {
   const row = doc.createElement("div");
   row.id = rowID;
   row.className = "addon-detail-row";
-  const label = doc.createElement("label");
-  label.htmlFor = `${rowID}-select`;
+  const label = doc.createElement("span");
+  label.id = `${rowID}-label`;
   label.textContent = "菜单语言 / Menu language";
-  const select = doc.createElement("select");
-  select.id = label.htmlFor;
+  // Native select popups do not open reliably in Zotero's plugin viewer.
+  const choices = doc.createElement("div");
+  choices.setAttribute("role", "radiogroup");
+  choices.setAttribute("aria-labelledby", label.id);
+  choices.style.cssText = "display:flex;gap:12px;flex-wrap:wrap";
+  const saved = getPref("menuLanguage");
+  const selected = saved === "zh-CN" || saved === "en-US" ? saved : "auto";
   for (const [value, text] of [
     ["auto", "自动 / Auto"],
     ["zh-CN", "简体中文"],
     ["en-US", "English"],
   ]) {
-    const option = doc.createElement("option");
-    option.value = value;
-    option.textContent = text;
-    select.appendChild(option);
+    const option = doc.createElement("label");
+    const radio = doc.createElement("input");
+    radio.type = "radio";
+    radio.name = rowID;
+    radio.value = value;
+    radio.checked = value === selected;
+    radio.addEventListener("change", () => {
+      if (radio.checked) changeLanguage(radio.value);
+    });
+    option.append(radio, doc.createTextNode(text));
+    choices.appendChild(option);
   }
-  const saved = getPref("menuLanguage");
-  select.value = saved === "zh-CN" || saved === "en-US" ? saved : "auto";
-  select.addEventListener("change", () => {
-    setPref("menuLanguage", select.value);
+  function changeLanguage(value: string) {
+    setPref("menuLanguage", value);
     initLocale();
     // Update existing View menu entries without registering duplicate listeners.
     for (const win of Zotero.getMainWindows()) {
@@ -76,7 +86,7 @@ function renderLanguageMenu(doc: Document) {
     for (const reader of Zotero.Reader._readers) {
       reader._iframeWindow?.document.querySelector(`.${config.addonRef}-bio-menu`)?.remove();
     }
-  });
-  row.append(label, select);
+  }
+  row.append(label, choices);
   details.appendChild(row);
 }
