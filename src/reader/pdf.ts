@@ -107,7 +107,11 @@ function patchCanvasGraphicsShowText(
   _log("Patching showText", canvasGraphicsPrototype);
 
   // @ts-ignore Runtime generated method on prototype
-  canvasGraphicsPrototype[pdfjsLib.OPS.showText] = function (glyphs: Glyph[]) {
+  canvasGraphicsPrototype[pdfjsLib.OPS.showText] = function (...args: [Glyph[]] | [number, Glyph[]]) {
+    // PDF.js 5.7 adds an operator index before the glyphs; retain it on every call.
+    const hasOpIdx = args.length >= 2;
+    const glyphs = (hasOpIdx ? args[1] : args[0]) as Glyph[];
+    const buildArgs = (g: Glyph[]) => hasOpIdx ? [args[0], g] : [g];
     const needsProcessing = window.__BIONIC_READER_ENABLED ||
       window.__BIONIC_HIGHLIGHT_VERBS ||
       window.__BIONIC_HIGHLIGHT_NOUNS ||
@@ -115,7 +119,7 @@ function patchCanvasGraphicsShowText(
       window.__BIONIC_HIGHLIGHT_PUNCTUATION;
 
     if (!needsProcessing) {
-      return original_showText.apply(this, [glyphs]);
+      return original_showText.apply(this, buildArgs(glyphs));
     }
 
     const opacityContrast = window.__BIONIC_OPACITY_CONTRAST || 1;
@@ -170,7 +174,7 @@ function patchCanvasGraphicsShowText(
             .replace(/normal|bold|[1-9]00/, `${fontWeight}`);
           
           // 处理这个标点符号
-          original_showText.apply(this, [newG]);
+          original_showText.apply(this, buildArgs(newG));
           
           // 恢复原始字体设置
           this.ctx.font = originalFont;
@@ -206,7 +210,7 @@ function patchCanvasGraphicsShowText(
         }
       }
 
-      original_showText.apply(this, [newG]);
+      original_showText.apply(this, buildArgs(newG));
 
       if ((window.__BIONIC_HIGHLIGHT_VERBS && isHighlightedVerb) ||
         (window.__BIONIC_HIGHLIGHT_NOUNS && isHighlightedNoun) ||

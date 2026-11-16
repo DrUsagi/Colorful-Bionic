@@ -1,4 +1,5 @@
 import { config } from "../../package.json";
+import { getPref } from "./prefs";
 
 export { initLocale, getString, getLocaleID };
 
@@ -6,11 +7,15 @@ export { initLocale, getString, getLocaleID };
  * Initialize locale data
  */
 function initLocale() {
+  const preference = getPref("menuLanguage");
+  const locale = preference === "zh-CN" || preference === "en-US"
+    ? preference
+    : Services.locale.appLocaleAsBCP47 === "zh-CN" ? "zh-CN" : "en-US";
   const l10n = new (
     typeof Localization === "undefined"
       ? ztoolkit.getGlobal("Localization")
       : Localization
-  )([`${config.addonRef}-addon.ftl`], true);
+  )([`${config.addonRef}-addon.ftl`], true, undefined, [locale]);
   addon.data.locale = {
     current: l10n,
   };

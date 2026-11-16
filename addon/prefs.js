@@ -14,3 +14,5 @@ pref("__prefsPrefix__.showSentenceDivider", false);
 pref("__prefsPrefix__.sentenceDividerColor", "#FF0000");
 pref("__prefsPrefix__.highlightConjunctions", false);
 pref("__prefsPrefix__.conjunctionHighlightColor", "#FFA500");
+
+pref("__prefsPrefix__.menuLanguage", "auto");

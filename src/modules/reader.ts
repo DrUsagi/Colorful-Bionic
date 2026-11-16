@@ -1,3 +1,4 @@
+import { getString } from "../utils/locale";
 import { wait } from "zotero-plugin-toolkit";
 import { getPref } from "../utils/prefs";
 import { getCurrentItemStatus, toggleCurrentItemStatus, getHighlightStatus, setHighlightStatus, getItemColorSetting, setItemColorSetting } from "../utils/status";
@@ -196,7 +197,7 @@ function injectToolbarButton(event: {
             }
 
             // 显示弹出菜单
-            const button = ev.target as HTMLButtonElement;
+            const button = ev.currentTarget as HTMLButtonElement;
             const rect = button.getBoundingClientRect();
 
             // 创建并显示设置菜单
@@ -250,6 +251,8 @@ function injectToolbarButton(event: {
       ],
       enableElementRecord: false,
     });
+    // The toolbar lives outside the PDF iframe and defaults to a 28px icon width.
+    bioButton.style.cssText = "width: max-content; flex: 0 0 auto; padding: 0 4px; white-space: nowrap;";
     ztoolkit.log("更新Bio按钮状态");
     updateReaderToolbarButton(bioButton, reader);
     ztoolkit.log("添加Bio按钮到工具栏");
@@ -269,8 +272,9 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
     position: absolute;
     top: 100%;
     right: 0;
-    background: white;
-    border: 1px solid rgba(0,0,0,0.2);
+    background: var(--color-background, #fff);
+    color: var(--fill-primary, #222);
+    border: 1px solid var(--color-border, #ccc);
     border-radius: 4px;
     padding: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -305,7 +309,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const bionicOption = createOptionCheckbox(
     doc,
     "enableBionicReader",
-    "启用Bionic阅读",
+    getString("reader-enable"),
     async (checked: boolean) => {
       // 更新设置
       toggleCurrentItemStatus(reader.itemID || -1);
@@ -325,9 +329,9 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   );
 
   const bionicDesc = doc.createElement("div");
-  bionicDesc.textContent = "（黑白加粗模式）";
+  bionicDesc.textContent = getString("reader-description");
   bionicDesc.style.fontSize = "11px";
-  bionicDesc.style.color = "#666";
+  bionicDesc.style.color = "var(--fill-secondary, #666)";
   bionicDesc.style.marginLeft = "20px";
   bionicDesc.style.marginBottom = "5px";
 
@@ -339,7 +343,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
 
   // 添加词性高亮标题
   const highlightTitle = doc.createElement("div");
-  highlightTitle.textContent = "词性标注功能:";
+  highlightTitle.textContent = getString("reader-highlights");
   highlightTitle.style.fontWeight = "bold";
   highlightTitle.style.marginBottom = "5px";
 
@@ -349,7 +353,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const verbOption = createOptionCheckbox(
     doc,
     "highlightVerbs",
-    "高亮动词",
+    getString("reader-verbs"),
     async (checked: boolean) => {
       // 更新设置
       setHighlightStatus(reader.itemID || -1, 'verbs', checked);
@@ -373,7 +377,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const verbColorOption = createColorOption(
     doc,
     'verb',
-    '动词颜色: ',
+    getString("reader-verb-color"),
     [
       { color: "#FF5252", id: "verb-color-1" },  // 红色
       { color: "#E53935", id: "verb-color-2" },  // 深红色
@@ -404,7 +408,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const nounOption = createOptionCheckbox(
     doc,
     "highlightNouns",
-    "高亮名词",
+    getString("reader-nouns"),
     async (checked: boolean) => {
       // 更新设置
       setHighlightStatus(reader.itemID || -1, 'nouns', checked);
@@ -428,7 +432,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const nounColorOption = createColorOption(
     doc,
     'noun',
-    '名词颜色: ',
+    getString("reader-noun-color"),
     [
       { color: "#5252FF", id: "noun-color-1" },  // 靛蓝色
       { color: "#3F51B5", id: "noun-color-2" },  // 蓝紫色
@@ -459,7 +463,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const conjunctionOption = createOptionCheckbox(
     doc,
     "highlightConjunctions",
-    "高亮连词",
+    getString("reader-conjunctions"),
     async (checked: boolean) => {
       // 更新设置
       setHighlightStatus(reader.itemID || -1, 'conjunctions', checked);
@@ -483,7 +487,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const conjunctionColorOption = createColorOption(
     doc,
     'conjunction',
-    '连词颜色: ',
+    getString("reader-conjunction-color"),
     [
       { color: "#FFA500", id: "conjunction-color-1" },  // 橙色
       { color: "#F57C00", id: "conjunction-color-2" },  // 深橙色
@@ -514,7 +518,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const punctuationOption = createOptionCheckbox(
     doc,
     "highlightPunctuation",
-    "高亮标点符号",
+    getString("reader-punctuation"),
     async (checked: boolean) => {
       // 更新设置
       setHighlightStatus(reader.itemID || -1, 'punctuation', checked);
@@ -538,7 +542,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const punctuationBoldOption = createOptionCheckbox(
     doc,
     "punctuationBold",
-    "标点符号加粗",
+    getString("reader-punctuation-bold"),
     async (checked: boolean) => {
       // 更新设置
       setHighlightStatus(reader.itemID || -1, 'punctuationBold', checked);
@@ -562,7 +566,7 @@ function createBioOptionsMenu(doc: Document, reader: _ZoteroTypes.ReaderInstance
   const punctuationColorOption = createColorOption(
     doc,
     'punctuation',
-    '标点符号颜色: ',
+    getString("reader-punctuation-color"),
     [
       { color: "#FF00FF", id: "punctuation-color-1" },   // 洋红色
       { color: "#E040FB", id: "punctuation-color-2" },   // 紫色
@@ -627,6 +631,7 @@ function createOptionCheckbox(
 
   const labelElem = doc.createElement("label");
   labelElem.textContent = label;
+  labelElem.style.color = "inherit";
   labelElem.addEventListener("click", (e) => {
     e.stopPropagation();
     // 点击标签时也切换复选框状态
@@ -669,6 +674,7 @@ function createColorOption(
 
   const labelElem = doc.createElement("span");
   labelElem.textContent = label;
+  labelElem.style.color = "inherit";
   labelElem.style.marginRight = "8px";
   labelElem.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -698,7 +704,7 @@ function createColorOption(
     preset.style.backgroundColor = color;
     preset.style.borderRadius = "3px";
     preset.style.cursor = "pointer";
-    preset.style.border = color === currentColor ? "2px solid #000" : "1px solid #ccc";
+    preset.style.border = color === currentColor ? "2px solid var(--fill-primary, #222)" : "1px solid var(--color-border, #ccc)";
 
     preset.addEventListener("click", (e) => {
       // 阻止事件冒泡
@@ -708,7 +714,7 @@ function createColorOption(
       colors.forEach(c => {
         const el = doc.getElementById(c.id);
         if (el) {
-          el.style.border = c.color === color ? "2px solid #000" : "1px solid #ccc";
+          el.style.border = c.color === color ? "2px solid var(--fill-primary, #222)" : "1px solid var(--color-border, #ccc)";
         }
       });
 
@@ -731,7 +737,7 @@ function createDivider(doc: Document): HTMLElement {
   divider.style.margin = "10px 0";
   divider.style.border = "none";
   divider.style.height = "1px";
-  divider.style.backgroundColor = "#e5e5e5";
+  divider.style.backgroundColor = "var(--color-border, #e5e5e5)";
 
   // 阻止分隔线上的点击事件冒泡
   divider.addEventListener("click", (e) => {
