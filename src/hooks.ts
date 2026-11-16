@@ -1,3 +1,4 @@
+import { initLanguageMenu, unInitLanguageMenu } from "./modules/languageMenu";
 import { config } from "../package.json";
 import { initMenus } from "./modules/menu";
 import { initPreferencePane } from "./modules/preferences";
@@ -16,6 +17,7 @@ async function onStartup() {
   ztoolkit.log("插件启动...");
 
   initLocale();
+  initLanguageMenu();
 
   initPreferencePane();
 
@@ -42,6 +44,7 @@ async function onMainWindowUnload(
 ): Promise<void> { }
 
 function onShutdown(): void {
+  unInitLanguageMenu();
   unInitSettings();
 
   unInitReader();
